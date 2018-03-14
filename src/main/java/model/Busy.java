@@ -6,12 +6,12 @@ package model;
 public final class Busy extends WorkerStatus {
     private final String workId;
 
-    private Busy(String workId) {
+    public Busy(String workId) {
         this.workId = workId;
     }
 
     @Override
-    protected boolean isIdle() {
+    public boolean isIdle() {
         return false;
     }
 

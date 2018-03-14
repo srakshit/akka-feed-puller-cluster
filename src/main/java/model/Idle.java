@@ -17,7 +17,7 @@ public final class Idle extends WorkerStatus {
     }
 
     @Override
-    protected boolean isIdle() {
+    public boolean isIdle() {
         return true;
     }
 
