@@ -11,8 +11,7 @@
 # Mac
 .DS_Store
 
-# Qualys folders
-failedscan/
+*.bak
 
 # Maven
 log/
