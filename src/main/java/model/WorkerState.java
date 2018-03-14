@@ -14,11 +14,11 @@ public final class WorkerState {
         this.status = status;
     }
 
-    private WorkerState copyWithRef(ActorRef ref) {
+    public WorkerState copyWithRef(ActorRef ref) {
         return new WorkerState(ref, this.status);
     }
 
-    private WorkerState copyWithStatus(WorkerStatus status) {
+    public WorkerState copyWithStatus(WorkerStatus status) {
         return new WorkerState(this.ref, status);
     }
 }

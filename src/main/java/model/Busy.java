@@ -22,6 +22,6 @@ public final class Busy extends WorkerStatus {
 
     @Override
     public String toString() {
-        return "Busy: {work=" + workId + "}";
+        return "Busy: {" + "work=" + workId + "}";
     }
 }

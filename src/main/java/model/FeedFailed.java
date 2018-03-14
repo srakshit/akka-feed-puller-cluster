@@ -4,9 +4,9 @@ package model;
  * Created by rakshit on 13/03/2018.
  */
 public class FeedFailed implements IFeedDomainEvent {
-    public Integer feedId;
+    public Feed feed;
 
-    public FeedFailed(Integer feedId) {
-        this.feedId = feedId;
+    public FeedFailed(Feed feed) {
+        this.feed = feed;
     }
 }
