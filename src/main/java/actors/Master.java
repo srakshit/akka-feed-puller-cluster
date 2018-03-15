@@ -3,6 +3,9 @@ package actors;
 import akka.actor.AbstractActor;
 import akka.actor.Cancellable;
 import akka.actor.Props;
+import akka.cluster.Cluster;
+import akka.cluster.ClusterEvent;
+import akka.cluster.Member;
 import akka.cluster.client.ClusterClientReceptionist;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
@@ -14,6 +17,7 @@ import scala.concurrent.duration.Duration;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -22,29 +26,33 @@ public class Master extends AbstractActor {
         return Props.create(Master.class);
     }
     private final LoggingAdapter log = Logging.getLogger(getContext().system(), this);
+    Cluster cluster = Cluster.get(getContext().getSystem());
 
     private HashMap<String, WorkerState> workers = new HashMap<>();
     private FeedState verySmallFileFeedState = new VerySmallFileFeedState();
-    private Cancellable loadFeedConfig;
+    private FeedState smallFileFeedState = new SmallFileFeedState();
+    private FeedState mediumFileFeedState = new MediumFileFeedState();
+    private FeedState largeFileFeedState = new LargeFileFeedState();
+    private Cancellable loadFeedConfigScheduler;
 
     public Master() {
         ClusterClientReceptionist.get(getContext().system()).registerService(getSelf());
-        //Move it to cluster worker up event
-        this.loadFeedConfig = getContext().getSystem().scheduler().schedule(
-                Duration.Zero(),
-                Duration.create(1, TimeUnit.MINUTES),
-                getSelf(), LoadFeedConfig.class,
-                getContext().dispatcher(),
-                getSelf());
+    }
+
+    @Override
+    public void preStart() {
+        cluster.subscribe(getSelf(), ClusterEvent.initialStateAsEvents(),
+                ClusterEvent.MemberEvent.class, ClusterEvent.UnreachableMember.class);
     }
 
     @Override
     public void postStop() {
-        loadFeedConfig.cancel();
+        loadFeedConfigScheduler.cancel();
+        cluster.unsubscribe(getSelf());
     }
 
     private void notifyWorkers(){
-        String[] workerType = {"very-small-file"};
+        String[] workerType = {"very-small-file", "small-file", "medium-file", "large-file"};
         FeedState feedState;
         for (String type: workerType) {
             feedState = getFeedState(type);
@@ -60,6 +68,29 @@ public class Master extends AbstractActor {
     @Override
     public Receive createReceive() {
         return receiveBuilder()
+                .match(ClusterEvent.MemberUp.class, mUp -> {
+                    log.info("Member is Up: {}", mUp.member());
+                    scala.collection.Iterator<Member> it = cluster.state().members().iterator();
+                    while (it.hasNext()) {
+                        log.info(it.next().address().toString());
+                    }
+                    //Move it to cluster worker up event
+                    if (this.loadFeedConfigScheduler == null) {
+                        log.info("Started scheduler to retrieve config from JSON every 1 min");
+                        this.loadFeedConfigScheduler = getContext().getSystem().scheduler().schedule(
+                                Duration.Zero(),
+                                Duration.create(1, TimeUnit.MINUTES),
+                                getSelf(), "load config from json",
+                                getContext().dispatcher(),
+                                getSelf());
+                    }
+                })
+                .match(ClusterEvent.UnreachableMember.class, mUnreachable -> {
+                    log.info("Member detected as unreachable: {}", mUnreachable.member());
+                })
+                .match(ClusterEvent.MemberRemoved.class, mRemoved -> {
+                    log.info("Member is Removed: {}", mRemoved.member());
+                })
                 .match(RegisterWorker.class, worker -> {
                     FeedState feedState;
                     if (workers.containsKey(worker.workerId)) {
@@ -136,18 +167,17 @@ public class Master extends AbstractActor {
                             notifyWorkers();
                         }
                     }
+                    log.info("Done with Accepting Feeds");
                 })
-                .match(LoadFeedConfig.class, x -> {
+                .matchEquals("load config from json", obj -> {
                     log.info("Loading feed configuration from JSON");
                     byte[] jsonData = Files.readAllBytes(Paths.get("feedConfig.json"));
                     ObjectMapper objectMapper = new ObjectMapper();
                     objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
-                    List<Feed> feeds = objectMapper.readValue(jsonData, new TypeReference<List<Feed>>() {
-                    });
+                    List<Feed> feeds = objectMapper.readValue(jsonData, new TypeReference<List<Feed>>() {});
 
                     for (Feed f: feeds)
-                        System.out.println(f);
-                    System.out.println();
+                        log.info(f.toString());
 
                     getSender().tell(new Work(feeds), getSelf());
                 })
@@ -158,6 +188,12 @@ public class Master extends AbstractActor {
         switch (workerType) {
             case "very-small-file" :
                 return verySmallFileFeedState;
+            case "small-file" :
+                return smallFileFeedState;
+            case "medium-file" :
+                return mediumFileFeedState;
+            case "large-file" :
+                return largeFileFeedState;
             default : throw new IllegalArgumentException("Worker Type not found");
         }
     }
@@ -166,6 +202,15 @@ public class Master extends AbstractActor {
         switch (workerType) {
             case "very-small-file" :
                 verySmallFileFeedState = feedState;
+                break;
+            case "small-file" :
+                smallFileFeedState = feedState;
+                break;
+            case "medium-file" :
+                mediumFileFeedState = feedState;
+                break;
+            case "large-file" :
+                largeFileFeedState = feedState;
                 break;
             default : throw new IllegalArgumentException("Worker Type not found");
         }

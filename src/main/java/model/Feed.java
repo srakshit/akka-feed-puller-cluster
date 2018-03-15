@@ -15,9 +15,17 @@ public class Feed {
     private String company;
     private String feedName;
     private String url;
+    private boolean isActive;
+    private boolean override;
+    private long interval;
+    private String backOff;
 
     @JsonFormat (shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private Date lastUpdated;
+
+    public Feed() {
+
+    }
 
     public Feed(Feed feed){
         this.id = feed.id;
@@ -25,6 +33,10 @@ public class Feed {
         this.feedName = feed.feedName;
         this.url = feed.url;
         this.lastUpdated = feed.lastUpdated;
+        this.isActive = feed.isActive;
+        this.override = feed.override;
+        this.interval = feed.interval;
+        this.backOff = feed.backOff;
     }
 
     public int getId() { return this.id; }
@@ -40,6 +52,14 @@ public class Feed {
     public String getUrl() {
         return this.url;
     }
+
+    public boolean getIsActive() { return this.isActive; }
+
+    public boolean getOverride() { return this.override; }
+
+    public long getInterval() { return this.interval; }
+
+    public String getBackOff() { return this.backOff; }
 
     public Date getLastUpdated() {
         return this.lastUpdated;

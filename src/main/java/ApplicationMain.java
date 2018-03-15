@@ -14,6 +14,8 @@ public class ApplicationMain {
     public static void main(String[] args) throws InterruptedException {
         if (args.length == 0){
             startMaster(2551, "master");
+            Thread.sleep(5000);
+            startMaster(2552, "master");
         }
     }
 
