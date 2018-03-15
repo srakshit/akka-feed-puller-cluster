@@ -17,7 +17,6 @@ import scala.concurrent.duration.Duration;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -85,12 +84,8 @@ public class Master extends AbstractActor {
                                 getSelf());
                     }
                 })
-                .match(ClusterEvent.UnreachableMember.class, mUnreachable -> {
-                    log.info("Member detected as unreachable: {}", mUnreachable.member());
-                })
-                .match(ClusterEvent.MemberRemoved.class, mRemoved -> {
-                    log.info("Member is Removed: {}", mRemoved.member());
-                })
+                .match(ClusterEvent.UnreachableMember.class, mUnreachable -> log.info("Member detected as unreachable: {}", mUnreachable.member()))
+                .match(ClusterEvent.MemberRemoved.class, mRemoved -> log.info("Member is Removed: {}", mRemoved.member()))
                 .match(RegisterWorker.class, worker -> {
                     FeedState feedState;
                     if (workers.containsKey(worker.workerId)) {
