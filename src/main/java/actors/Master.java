@@ -14,6 +14,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import model.*;
 import scala.concurrent.duration.Duration;
+
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -57,46 +59,45 @@ public class Master extends AbstractActor {
             feedState = getFeedState(type);
             if (feedState.hasFeed()) {
                 for (WorkerState state: workers.values()) {
-                    if (state.type.equalsIgnoreCase(type) && state.status.isIdle())
+                    if (state.type.equalsIgnoreCase(type) && state.status.isIdle()) {
+                        log.info("Notifying idle workers about incoming feeds");
                         state.ref.tell(WorkIsReady.instance, getSelf());
+                    }
                 }
             }
         }
     }
+    //Cleanup task to remove workers every 30 secs
 
     @Override
     public Receive createReceive() {
         return receiveBuilder()
-                .match(ClusterEvent.MemberUp.class, mUp -> {
-                    log.info("Member is Up: {}", mUp.member());
-                    scala.collection.Iterator<Member> it = cluster.state().members().iterator();
-                    while (it.hasNext()) {
-                        log.info(it.next().address().toString());
-                    }
-                    //Move it to cluster worker up event
-                    if (this.loadFeedConfigScheduler == null) {
-                        log.info("Started scheduler to retrieve config from JSON every 1 min");
-                        this.loadFeedConfigScheduler = getContext().getSystem().scheduler().schedule(
-                                Duration.Zero(),
-                                Duration.create(1, TimeUnit.MINUTES),
-                                getSelf(), "load config from json",
-                                getContext().dispatcher(),
-                                getSelf());
-                    }
-                })
+                .match(ClusterEvent.MemberUp.class, mUp -> log.info("Member is Up: {}", mUp.member()))
                 .match(ClusterEvent.UnreachableMember.class, mUnreachable -> log.info("Member detected as unreachable: {}", mUnreachable.member()))
                 .match(ClusterEvent.MemberRemoved.class, mRemoved -> log.info("Member is Removed: {}", mRemoved.member()))
                 .match(RegisterWorker.class, worker -> {
                     FeedState feedState;
                     if (workers.containsKey(worker.workerId)) {
                         workers.put(worker.workerId, workers.get(worker.workerId).copyWithRef(getSender()));
+                        log.info("Worker Re-Registered : " + worker.toString());
                     } else {
                         workers.put(worker.workerId, new WorkerState(getSender(), worker.workerType, Idle.getInstance()));
                         log.info("Worker Registered : " + worker.toString());
-                        feedState = getFeedState(worker.workerType);
-                        if (feedState.hasFeed()) {
-                            getSender().tell(WorkIsReady.instance, getSelf());
-                        }
+                    }
+
+                    feedState = getFeedState(worker.workerType);
+                    if (feedState.hasFeed()) {
+                        getSender().tell(WorkIsReady.instance, getSelf());
+                    }
+
+                    if (this.loadFeedConfigScheduler == null) {
+                        log.info("Started scheduler to retrieve config from JSON every 1 min");
+                        this.loadFeedConfigScheduler = getContext().getSystem().scheduler().schedule(
+                                Duration.Zero(),
+                                Duration.create(1, TimeUnit.MINUTES),
+                                getSelf(), LoadFeedConfig.class,
+                                getContext().dispatcher(),
+                                getSelf());
                     }
                 })
                 .match(WorkerRequestsWork.class, worker -> {
@@ -115,10 +116,10 @@ public class Master extends AbstractActor {
                                 getSender().tell(feed, getSelf());
                             }
                         } else {
-                            log.error("Unregistered worker {} can not request work", worker.workerId);
+                            log.error("Unregistered worker {} can not request feed", worker.workerId);
                         }
                     } else {
-                        log.info("Sit idle {}. Will let you know when work will come.", worker.workerId);
+                        log.info("Sit idle {}. Will let you know when feed will come.", worker.workerId);
                     }
                 })
                 .match(WorkIsDone.class, worker -> {
@@ -127,7 +128,7 @@ public class Master extends AbstractActor {
                     if (feedState.isDownloaded(customerFeedName)) {
                         getSender().tell(new Ack(customerFeedName), getSelf());
                     } else {
-                        log.info("Feed {} is downloaded by worker {}", customerFeedName, worker.workerId);
+                        log.info("Worker {} completed downloaded feed {} at {}", worker.workerId, customerFeedName, worker.result);
                         if (workers.get(worker.workerId).status.isBusy()) {
                             workers.put(worker.workerId, workers.get(worker.workerId).copyWithStatus(Idle.getInstance()));
                         }
@@ -140,7 +141,7 @@ public class Master extends AbstractActor {
                 .match(WorkFailed.class, worker -> {
                     FeedState feedState = getFeedState(worker.workerType);
                     String customerFeedName = worker.feed.getCompany() + "-" + worker.feed.getFeedName();
-                    log.info("Feed {} has failed to download by worker {}", customerFeedName, worker.workerId);
+                    log.info("Worker {} failed to download feed {}", worker.workerId, customerFeedName);
                     if (workers.get(worker.workerId).status.isBusy()) {
                         workers.put(worker.workerId, workers.get(worker.workerId).copyWithStatus(Idle.getInstance()));
                     }
@@ -148,7 +149,6 @@ public class Master extends AbstractActor {
                     feedState = feedState.updated(feedFailed);
                     setFeedState(worker.workerType, feedState);
                     getSender().tell(new Ack(customerFeedName), getSelf());
-                    notifyWorkers();
                 })
                 .match(Work.class, work -> {
                     for (Feed feed: work.feeds) {
@@ -159,20 +159,18 @@ public class Master extends AbstractActor {
                             FeedAccepted feedAccepted = new FeedAccepted(feed);
                             feedState = feedState.updated(feedAccepted);
                             setFeedState(feed.getFeedName(), feedState);
-                            notifyWorkers();
                         }
                     }
-                    log.info("Done with Accepting Feeds");
                 })
-                .matchEquals("load config from json", obj -> {
+                .matchEquals(LoadFeedConfig.class, x -> {
                     log.info("Loading feed configuration from JSON");
                     byte[] jsonData = Files.readAllBytes(Paths.get("feedConfig.json"));
                     ObjectMapper objectMapper = new ObjectMapper();
                     objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
                     List<Feed> feeds = objectMapper.readValue(jsonData, new TypeReference<List<Feed>>() {});
 
-                    for (Feed f: feeds)
-                        log.info(f.toString());
+                    //for (Feed f: feeds)
+                    //    log.info(f.toString());
 
                     getSender().tell(new Work(feeds), getSelf());
                 })
@@ -211,14 +209,9 @@ public class Master extends AbstractActor {
         }
     }
 
-    public static final class LoadFeedConfig {
-        @Override
-        public String toString() {
-            return "LoadFeedConfig";
-        }
-    }
+    public static final class LoadFeedConfig {}
 
-    public static final class Ack {
+    public static final class Ack implements Serializable {
         final String feedName;
 
         public Ack(String feedName) {
@@ -231,7 +224,7 @@ public class Master extends AbstractActor {
         }
     }
 
-    public static final class Work {
+    public static final class Work implements Serializable {
         private final List<Feed> feeds;
 
         public Work(List<Feed> feeds) {
@@ -244,22 +237,24 @@ public class Master extends AbstractActor {
         }
     }
 
-    public static final class RegisterWorker {
+    public static final class RegisterWorker implements Serializable {
         private final String workerType;
         private final String workerId;
+        private final boolean isIdle;
 
-        public RegisterWorker(String workerType, String workerId) {
+        public RegisterWorker(String workerType, String workerId, boolean isIdle) {
             this.workerType = workerType;
             this.workerId = workerId;
+            this.isIdle = isIdle;
         }
 
         @Override
         public String toString() {
-            return "RegisterWorker: {workerType=" + workerType + "workerId=" + workerId +"}";
+            return "RegisterWorker: {workerType=" + workerType + ", workerId=" + workerId +", status=" + (isIdle ? "true" : "false") +"}";
         }
     }
 
-    public static final class WorkerRequestsWork {
+    public static final class WorkerRequestsWork implements Serializable {
         private final String workerType;
         private final String workerId;
 
@@ -270,28 +265,30 @@ public class Master extends AbstractActor {
 
         @Override
         public String toString() {
-            return "WorkerRequestsWork: {workerType=" + workerType + "workerId=" + workerId +"}";
+            return "WorkerRequestsWork: {workerType=" + workerType + ", workerId=" + workerId +"}";
         }
     }
 
-    public static final class WorkIsDone {
+    public static final class WorkIsDone implements Serializable {
         private final String workerType;
         private final String workerId;
         private final Feed feed;
+        private final String result;
 
-        public WorkIsDone(String workerType, String workerId, Feed feed) {
+        public WorkIsDone(String workerType, String workerId, Feed feed, String result) {
             this.workerType = workerType;
             this.workerId = workerId;
             this.feed = feed;
+            this.result = result;
         }
 
         @Override
         public String toString() {
-            return "WorkIsDone: {workerType=" + workerType + "workerId=" + workerId + "feed=" + feed +"}";
+            return "WorkIsDone: {workerType=" + workerType + ", workerId=" + workerId + ", feed=" + feed  + ", result=" + result +"}";
         }
     }
 
-    public static final class WorkFailed {
+    public static final class WorkFailed implements Serializable {
         private final String workerType;
         private final String workerId;
         private final Feed feed;
@@ -304,11 +301,11 @@ public class Master extends AbstractActor {
 
         @Override
         public String toString() {
-            return "WorkFailed: {workerType=" + workerType + "workerId=" + workerId + "feed=" + feed +"}";
+            return "WorkFailed: {workerType=" + workerType + ", workerId=" + workerId + ", feed=" + feed +"}";
         }
     }
 
-    public static final class WorkIsReady {
+    public static final class WorkIsReady implements Serializable {
         private static final WorkIsReady instance = new WorkIsReady();
         public static WorkIsReady getInstance() {
             return instance;

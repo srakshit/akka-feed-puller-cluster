@@ -31,8 +31,11 @@ public abstract class FeedState {
         Map<String, Feed> newFeedDownloadInProgress = new HashMap<>(feedState.feedDownloadInProgress);
 
         if (!newAcceptedFeeds.contains(feedAccepted.feed.getId())) {
+            String customerFeedName = feedAccepted.feed.getCompany() + "-" + feedAccepted.feed.getFeedName();
+
             newPendingFeeds.addLast(feedAccepted.feed);
-            newAcceptedFeeds.add(feedAccepted.feed.getCompany() + "-" + feedAccepted.feed.getFeedName());
+            newAcceptedFeeds.add(customerFeedName);
+            newDownloadedFeeds.remove(customerFeedName);
         }
 
         feedDownloadInProgress = newFeedDownloadInProgress;

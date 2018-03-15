@@ -9,6 +9,7 @@ import scala.concurrent.duration.Duration;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import static actors.Master.*;
 import static akka.actor.SupervisorStrategy.escalate;
 import static akka.actor.SupervisorStrategy.restart;
 import static akka.actor.SupervisorStrategy.stop;
@@ -29,19 +30,20 @@ public class Worker extends AbstractActor {
     private final Cancellable registerTask;
     private Feed currentFeed = null;
     private String workerType = null;
+    private boolean isIdle = true;
 
     public Worker(ActorRef clusterClient, Props workExecutorProps, String workerType) {
         this.clusterClient = clusterClient;
-        this.workExecutor = getContext().watch(getContext().actorOf(workExecutorProps, "executor"));
+        this.workExecutor = getContext().watch(getContext().actorOf(workExecutorProps));
         this.workerType = workerType;
         this.registerTask = getContext().system().scheduler().schedule(
                                 Duration.Zero(),
                                 Duration.create(10, TimeUnit.SECONDS),
                                 clusterClient,
-                                new ClusterClient.SendToAll("/user/master/singleton", new Master.RegisterWorker(workerType, workerId)),
+                                new ClusterClient.SendToAll("/user/master/singleton", new RegisterWorker(workerType, workerId, isIdle)),
                                 getContext().dispatcher(),
                                 getSelf());
-    }
+        }
 
     private Feed getCurrentFeed(){
         if (currentFeed != null)
@@ -52,21 +54,21 @@ public class Worker extends AbstractActor {
     @Override
     public SupervisorStrategy supervisorStrategy() {
         return new OneForOneStrategy(-1, Duration.Inf(),
-                t -> {
-                    if (t instanceof ActorInitializationException)
-                        return stop();
-                    else if (t instanceof DeathPactException)
-                        return stop();
-                    else if (t instanceof Exception) {
-                        if (currentFeed != null)
-                            sendToMaster(new Master.WorkFailed(workerType, workerId, getCurrentFeed()));
-                        //getContext().become(idle);
-                        return restart();
-                    }
-                    else {
-                        return escalate();
-                    }
+            t -> {
+                if (t instanceof ActorInitializationException)
+                    return stop();
+                else if (t instanceof DeathPactException)
+                    return stop();
+                else if (t instanceof Exception) {
+                    if (currentFeed != null)
+                        sendToMaster(new WorkFailed(workerType, workerId, getCurrentFeed()));
+                    isIdle =true;
+                    return restart();
                 }
+                else {
+                    return escalate();
+                }
+            }
         );
     }
 
@@ -81,6 +83,44 @@ public class Worker extends AbstractActor {
 
     @Override
     public Receive createReceive() {
-        return null;
+        return receiveBuilder()
+                .match(WorkIsReady.class, x -> {
+                    if (isIdle) {
+                        log.info("Requesting work from master");
+                        sendToMaster(new WorkerRequestsWork(workerType, workerId));
+                    }
+                })
+                .match(WorkComplete.class, complete -> sendToMaster(new WorkIsDone(workerType, workerId, currentFeed, complete.result)))
+                .match(Feed.class, feed -> {
+                    if (isIdle) {
+                        isIdle = false;
+                        log.info("Got work {} from master", feed.getCompany() + "-" + feed.getFeedName());
+                        currentFeed = feed;
+                        workExecutor.tell(feed, getSelf());
+                    } else {
+                        log.info("Got work {} from master while working", feed.getCompany() + "-" + feed.getFeedName());
+                    }
+                })
+                .match(Ack.class, ack -> {
+                    String customerFeedName = getCurrentFeed().getCompany() + "-" + getCurrentFeed().getFeedName();
+                    if (ack.feedName.equalsIgnoreCase(customerFeedName)) {
+                        isIdle = true;
+                        sendToMaster(new WorkerRequestsWork(workerType, workerId));
+                    }
+                })
+                .build();
+    }
+
+    public static class WorkComplete {
+        private final String result;
+
+        public WorkComplete(String result) {
+            this.result = result;
+        }
+
+        @Override
+        public String toString() {
+            return "WorkComplete: {result=" + result +"}";
+        }
     }
 }

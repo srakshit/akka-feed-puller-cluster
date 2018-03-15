@@ -1,6 +1,8 @@
 package model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+
+import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -8,7 +10,7 @@ import java.util.Date;
 /**
  * Created by rakshit on 10/03/2018.
  */
-public class Feed {
+public class Feed implements Serializable {
     private static final DateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
 
     private int id;
