@@ -7,18 +7,20 @@ import akka.actor.ActorRef;
  */
 public final class WorkerState {
     public final ActorRef ref;
+    public final String type;
     public final WorkerStatus status;
 
-    public WorkerState(ActorRef ref, WorkerStatus status) {
+    public WorkerState(ActorRef ref, String type, WorkerStatus status) {
         this.ref = ref;
+        this.type = type;
         this.status = status;
     }
 
     public WorkerState copyWithRef(ActorRef ref) {
-        return new WorkerState(ref, this.status);
+        return new WorkerState(ref, this.type, this.status);
     }
 
     public WorkerState copyWithStatus(WorkerStatus status) {
-        return new WorkerState(this.ref, status);
+        return new WorkerState(this.ref, this.type, status);
     }
 }

@@ -1,10 +1,11 @@
 package actors;
 
+import akka.actor.AbstractActor;
 import akka.actor.Cancellable;
 import akka.actor.Props;
+import akka.cluster.client.ClusterClientReceptionist;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import akka.persistence.AbstractPersistentActor;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,7 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class Master extends AbstractPersistentActor {
+public class Master extends AbstractActor {
     public static Props props() {
         return Props.create(Master.class);
     }
@@ -27,6 +28,7 @@ public class Master extends AbstractPersistentActor {
     private Cancellable loadFeedConfig;
 
     public Master() {
+        ClusterClientReceptionist.get(getContext().system()).registerService(getSelf());
         //Move it to cluster worker up event
         this.loadFeedConfig = getContext().getSystem().scheduler().schedule(
                 Duration.Zero(),
@@ -36,9 +38,18 @@ public class Master extends AbstractPersistentActor {
                 getSelf());
     }
 
-    @Override
-    public Receive createReceiveRecover() {
-        return null;
+    private void notifyWorkers(){
+        String[] workerType = {"very-small-file"};
+        FeedState feedState;
+        for (String type: workerType) {
+            feedState = getFeedState(type);
+            if (feedState.hasFeed()) {
+                for (WorkerState state: workers.values()) {
+                    if (state.type.equalsIgnoreCase(type) && state.status.isIdle())
+                        state.ref.tell(WorkIsReady.instance, getSelf());
+                }
+            }
+        }
     }
 
     @Override
@@ -49,7 +60,7 @@ public class Master extends AbstractPersistentActor {
                     if (workers.containsKey(worker.workerId)) {
                         workers.put(worker.workerId, workers.get(worker.workerId).copyWithRef(getSender()));
                     } else {
-                        workers.put(worker.workerId, new WorkerState(getSender(), Idle.getInstance()));
+                        workers.put(worker.workerId, new WorkerState(getSender(), worker.workerType, Idle.getInstance()));
                         log.info("Worker Registered : " + worker.toString());
                         feedState = getFeedState(worker.workerType);
                         if (feedState.hasFeed()) {
@@ -106,6 +117,7 @@ public class Master extends AbstractPersistentActor {
                     feedState = feedState.updated(feedFailed);
                     setFeedState(worker.workerType, feedState);
                     getSender().tell(new Ack(customerFeedName), getSelf());
+                    notifyWorkers();
                 })
                 .match(Work.class, work -> {
                     for (Feed feed: work.feeds) {
@@ -116,6 +128,7 @@ public class Master extends AbstractPersistentActor {
                             FeedAccepted feedAccepted = new FeedAccepted(feed);
                             feedState = feedState.updated(feedAccepted);
                             setFeedState(feed.getFeedName(), feedState);
+                            notifyWorkers();
                         }
                     }
                 })
@@ -151,11 +164,6 @@ public class Master extends AbstractPersistentActor {
                 break;
             default : throw new IllegalArgumentException("Worker Type not found");
         }
-    }
-
-    @Override
-    public String persistenceId() {
-        return "feed-master";
     }
 
     public static final class LoadFeedConfig {
