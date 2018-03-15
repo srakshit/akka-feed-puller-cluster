@@ -38,6 +38,11 @@ public class Master extends AbstractActor {
                 getSelf());
     }
 
+    @Override
+    public void postStop() {
+        loadFeedConfig.cancel();
+    }
+
     private void notifyWorkers(){
         String[] workerType = {"very-small-file"};
         FeedState feedState;
