@@ -71,6 +71,14 @@ public class Feed implements Serializable {
         this.lastUpdated = lastUpdated;
     }
 
+    public void setOverride(boolean value) {
+        this.override = value;
+    }
+
+    public void setBackOff(String backOff) {
+        this.backOff = backOff;
+    }
+
     @Override
     public String toString() {
         return "Feed: {company=" + company + ", feed=" + feedName + ", url=" + url + ", last_updated=" + lastUpdated + "}";

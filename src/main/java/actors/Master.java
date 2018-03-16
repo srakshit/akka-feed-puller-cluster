@@ -59,21 +59,6 @@ public class Master extends AbstractActor {
         cluster.unsubscribe(getSelf());
     }
 
-//    private void notifyWorkers(){
-//        String[] workerType = {"very-small-file", "small-file", "medium-file", "large-file"};
-//        FeedState feedState;
-//        for (String type: workerType) {
-//            feedState = getFeedState(type);
-//            if (feedState.hasFeed()) {
-//                for (WorkerState state: workers.values()) {
-//                    if (state.type.equalsIgnoreCase(type) && state.status.isIdle()) {
-//                        log.info("Notifying idle workers about incoming feeds");
-//                        state.ref.tell(WorkIsReady.instance, getSelf());
-//                    }
-//                }
-//            }
-//        }
-//    }
     //TODO: Test Cleanup task to remove workers every 30 secs
 
     @Override
@@ -122,14 +107,17 @@ public class Master extends AbstractActor {
                         if (workers.containsKey(worker.workerId)) {
                             WorkerState state = workers.get(worker.workerId);
                             if (state != null && state.status.isIdle()) {
-                                final Feed feed = feedState.nextFeed();
-                                FeedStarted feedStarted = new FeedStarted(feed);
-                                feedState = feedState.updated(feedStarted);
-                                setFeedState(worker.workerType, feedState);
-                                String customerFeedName = feed.getCompany() + "-" + feed.getFeedName();
-                                log.info("Giving worker {} to download feed {}", worker.workerId, customerFeedName);
-                                workers.put(worker.workerId, workers.get(worker.workerId).copyWithStatus(new Busy(customerFeedName)));
-                                getSender().tell(feed, getSelf());
+                                Feed feed = feedState.peekFeed();
+                                if (checkIfClientSessionsAreAvailable(feed.getCompany())) {
+                                    feed = feedState.nextFeed();
+                                    FeedStarted feedStarted = new FeedStarted(feed);
+                                    feedState = feedState.updated(feedStarted);
+                                    setFeedState(worker.workerType, feedState);
+                                    String customerFeedName = feed.getCompany() + "-" + feed.getFeedName();
+                                    log.info("Giving worker {} to download feed {}", worker.workerId, customerFeedName);
+                                    workers.put(worker.workerId, workers.get(worker.workerId).copyWithStatus(new Busy(customerFeedName)));
+                                    getSender().tell(feed, getSelf());
+                                }
                             }
                         } else {
                             log.error("Unregistered worker {} can not request feed", worker.workerId);
@@ -159,8 +147,11 @@ public class Master extends AbstractActor {
                 .match(WorkResult.class, result -> {
                     log.info("Updating last update time of feed {} in JSON config", result.feed.getCompany() + "-" + result.feed.getFeedName());
                     feeds.forEach(feed -> {
-                        if (feed.getId() == result.feed.getId())
+                        if (feed.getId() == result.feed.getId()) {
                             feed.setLastUpdated(result.lastUpdated);
+                            feed.setOverride(false);
+                            feed.setBackOff("");
+                        }
                     });
 
                     ObjectMapper mapper = new ObjectMapper();
@@ -174,6 +165,19 @@ public class Master extends AbstractActor {
                     if (workers.get(worker.workerId).status.isBusy()) {
                         workers.put(worker.workerId, workers.get(worker.workerId).copyWithStatus(Idle.getInstance()));
                     }
+
+                    log.info("Updating backOff of feed {} in JSON config", customerFeedName);
+                    feeds.forEach(feed -> {
+                        if (feed.getId() == feed.getId()) {
+                            feed.setOverride(false);
+                            feed.setBackOff("");
+                        }
+                    });
+
+                    ObjectMapper mapper = new ObjectMapper();
+                    ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
+                    writer.writeValue(new File("feedConfig.json"), feeds);
+
                     FeedFailed feedFailed = new FeedFailed(worker.feed);
                     feedState = feedState.updated(feedFailed);
                     setFeedState(worker.workerType, feedState);
@@ -216,6 +220,18 @@ public class Master extends AbstractActor {
                     }
                 })
                 .build();
+    }
+
+    private boolean checkIfClientSessionsAreAvailable(String company) {
+        String[] workerType = {"very-small-file", "small-file", "medium-file", "large-file"};
+        FeedState feedState;
+        int activeClientSession = 0;
+        for (String type: workerType) {
+            feedState = getFeedState(type);
+            if (feedState.isCompanyFeedDownloadInProgress(company))
+                activeClientSession += 1;
+        }
+        return activeClientSession < 2;
     }
 
     private FeedState getFeedState(String workerType) {

@@ -13,12 +13,14 @@ public abstract class FeedState {
     private final Map<String, Feed> feedDownloadInProgress;
     private final Set<String> acceptedFeeds;
     private final Set<String> downloadedFeeds;
+    private final Set<String> companyDownloadInProgress;
     private final ConcurrentLinkedDeque<Feed> pendingFeeds;
 
     public FeedState() {
         feedDownloadInProgress = new HashMap<>();
         acceptedFeeds = new HashSet<>();
         downloadedFeeds = new HashSet<>();
+        companyDownloadInProgress = new HashSet<>();
         pendingFeeds = new ConcurrentLinkedDeque<>();
     }
 
@@ -28,6 +30,7 @@ public abstract class FeedState {
         ConcurrentLinkedDeque<Feed> newPendingFeeds = new ConcurrentLinkedDeque<>(feedState.pendingFeeds);
         Set<String> newDownloadedFeeds = new HashSet<>(feedState.downloadedFeeds);
         Set<String> newAcceptedFeeds = new HashSet<>(feedState.acceptedFeeds);
+        Set<String> newCompanyDownloadInProgress = new HashSet<>(feedState.companyDownloadInProgress);
         Map<String, Feed> newFeedDownloadInProgress = new HashMap<>(feedState.feedDownloadInProgress);
 
         if (!newAcceptedFeeds.contains(feedAccepted.feed.getId())) {
@@ -39,6 +42,7 @@ public abstract class FeedState {
         }
 
         feedDownloadInProgress = newFeedDownloadInProgress;
+        companyDownloadInProgress = newCompanyDownloadInProgress;
         acceptedFeeds = newAcceptedFeeds;
         downloadedFeeds = newDownloadedFeeds;
         pendingFeeds = newPendingFeeds;
@@ -48,6 +52,7 @@ public abstract class FeedState {
         ConcurrentLinkedDeque<Feed> newPendingFeeds = new ConcurrentLinkedDeque<>(feedState.pendingFeeds);
         Set<String> newAcceptedFeeds = new HashSet<>(feedState.acceptedFeeds);
         Set<String> newDownloadedFeeds = new HashSet<>(feedState.downloadedFeeds);
+        Set<String> newCompanyDownloadInProgress = new HashSet<>(feedState.companyDownloadInProgress);
         Map<String, Feed> newFeedDownloadInProgress = new HashMap<>(feedState.feedDownloadInProgress);
 
         Feed feed = newPendingFeeds.removeFirst();
@@ -55,8 +60,10 @@ public abstract class FeedState {
             throw new IllegalArgumentException("FeedStarted expected feedId "+feed.getId()+"=="+ feedStarted.feed.getId());
         }
         newFeedDownloadInProgress.put(feedStarted.feed.getCompany() + "-" + feedStarted.feed.getFeedName(), feed);
+        newCompanyDownloadInProgress.add(feedStarted.feed.getCompany());
 
         feedDownloadInProgress = newFeedDownloadInProgress;
+        companyDownloadInProgress = newCompanyDownloadInProgress;
         acceptedFeeds = newAcceptedFeeds;
         downloadedFeeds = newDownloadedFeeds;
         pendingFeeds = newPendingFeeds;
@@ -66,14 +73,17 @@ public abstract class FeedState {
         ConcurrentLinkedDeque<Feed> newPendingFeeds = new ConcurrentLinkedDeque<>(feedState.pendingFeeds);
         Set<String> newAcceptedFeeds = new HashSet<>(feedState.acceptedFeeds);
         Set<String> newDownloadedFeeds = new HashSet<>(feedState.downloadedFeeds);
+        Set<String> newCompanyDownloadInProgress = new HashSet<>(feedState.companyDownloadInProgress);
         Map<String, Feed> newFeedDownloadInProgress = new HashMap<>(feedState.feedDownloadInProgress);
 
         String customerFeedName = feedCompleted.feed.getCompany() + "-" + feedCompleted.feed.getFeedName();
         newFeedDownloadInProgress.remove(customerFeedName);
+        newCompanyDownloadInProgress.remove(feedCompleted.feed.getCompany());
         newDownloadedFeeds.add(customerFeedName);
         newAcceptedFeeds.remove(customerFeedName);
 
         feedDownloadInProgress = newFeedDownloadInProgress;
+        companyDownloadInProgress = newCompanyDownloadInProgress;
         acceptedFeeds = newAcceptedFeeds;
         downloadedFeeds = newDownloadedFeeds;
         pendingFeeds = newPendingFeeds;
@@ -83,20 +93,25 @@ public abstract class FeedState {
         ConcurrentLinkedDeque<Feed> newPendingFeeds = new ConcurrentLinkedDeque<>(feedState.pendingFeeds);
         Set<String> newAcceptedFeeds = new HashSet<>(feedState.acceptedFeeds);
         Set<String> newDownloadedFeeds = new HashSet<>(feedState.downloadedFeeds);
+        Set<String> newCompanyDownloadInProgress = new HashSet<>(feedState.companyDownloadInProgress);
         Map<String, Feed> newFeedDownloadInProgress = new HashMap<>(feedState.feedDownloadInProgress);
 
         String customerFeedName = feedFailed.feed.getCompany() + "-" + feedFailed.feed.getFeedName();
         newFeedDownloadInProgress.remove(customerFeedName);
+        newCompanyDownloadInProgress.remove(feedFailed.feed.getCompany());
         newAcceptedFeeds.remove(customerFeedName);
 
         feedDownloadInProgress = newFeedDownloadInProgress;
+        companyDownloadInProgress = newCompanyDownloadInProgress;
         acceptedFeeds = newAcceptedFeeds;
         downloadedFeeds = newDownloadedFeeds;
         pendingFeeds = newPendingFeeds;
     }
 
-    public Feed nextFeed() {
-        return pendingFeeds.getFirst();
+    public Feed nextFeed() { return pendingFeeds.getFirst(); }
+
+    public Feed peekFeed() {
+        return pendingFeeds.peekFirst();
     }
 
     public boolean hasFeed() {
@@ -107,7 +122,7 @@ public abstract class FeedState {
         return acceptedFeeds.contains(customerFeedName);
     }
 
-    public boolean isDownloadInProgress(String customerFeedName) { return feedDownloadInProgress.containsKey(customerFeedName); }
+    public boolean isCompanyFeedDownloadInProgress(String company) { return companyDownloadInProgress.contains(company); }
 
     public boolean isDownloaded(String customerFeedName) {
         return downloadedFeeds.contains(customerFeedName);

@@ -74,7 +74,7 @@ public class ApplicationMain {
 
         ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
 
-        for(int i=0; i<2; i++) {
+        for(int i=0; i<100; i++) {
             system.actorOf(Worker.props(clusterClient, Props.create(VerySmallFileDownloader.class), workerType), workerType + "-worker-" + (i + 1));
         }
     }
@@ -87,7 +87,7 @@ public class ApplicationMain {
 
         ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
 
-        for(int i=0; i<2; i++) {
+        for(int i=0; i<100; i++) {
             system.actorOf(Worker.props(clusterClient, Props.create(SmallFileDownloader.class), workerType), workerType + "-" + (i + 1));
         }
     }
@@ -100,7 +100,7 @@ public class ApplicationMain {
 
         ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
 
-        for(int i=0; i<2; i++) {
+        for(int i=0; i<100; i++) {
             system.actorOf(Worker.props(clusterClient, Props.create(MediumFileDownloader.class), workerType), workerType + "-" + (i + 1));
         }
     }
@@ -113,7 +113,7 @@ public class ApplicationMain {
 
         ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
 
-        for(int i=0; i<2; i++) {
+        for(int i=0; i<100; i++) {
             system.actorOf(Worker.props(clusterClient, Props.create(LargeFileDownloader.class), workerType), workerType + "-" + (i + 1));
         }
     }
