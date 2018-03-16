@@ -11,8 +11,6 @@ import java.util.Date;
  * Created by rakshit on 10/03/2018.
  */
 public class Feed implements Serializable {
-    private static final DateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-
     private int id;
     private String company;
     private String feedName;

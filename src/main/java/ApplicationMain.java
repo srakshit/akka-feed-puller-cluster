@@ -18,6 +18,9 @@ import config.AppConfig;
 import java.util.Arrays;
 
 public class ApplicationMain {
+    private static ActorRef clusterClient;
+    private static ActorSystem system;
+
     public static void main(String[] args) throws Exception {
         AppConfig.loadConfigFromProperties();
 
@@ -32,13 +35,13 @@ public class ApplicationMain {
             startLargeFileDownloadWorker(3003, "large-file");
         }else {
             int port = Integer.parseInt(args[0]);
-            String workerType = args[1];
             int[] masterPortArr = Arrays.stream(AppConfig.MASTER_PORT_RANGE.split(":")).mapToInt(x -> Integer.parseInt(x)).toArray();
             int[] workerPortArr = Arrays.stream(AppConfig.WORKER_PORT_RANGE.split(":")).mapToInt(x -> Integer.parseInt(x)).toArray();
 
             if (masterPortArr[0] <= port && port <= masterPortArr[1])
                 startMaster(port, "master");
             else if (workerPortArr[0] <= port && port <= workerPortArr[1]) {
+                String workerType = args[1];
                 switch(workerType) {
                     case "very-small-file" :
                         startVerySmallFileDownloadWorker(port, workerType);
@@ -63,7 +66,7 @@ public class ApplicationMain {
                 withFallback(ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port)).
                 withFallback(ConfigFactory.load());
 
-        ActorSystem system = ActorSystem.create("ClusterSystem", conf);
+        system = ActorSystem.create("ClusterSystem", conf);
 
         system.actorOf(
                 ClusterSingletonManager.props(
@@ -75,12 +78,7 @@ public class ApplicationMain {
     }
 
     private static void startVerySmallFileDownloadWorker(int port, String workerType) {
-        Config conf = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
-                withFallback(ConfigFactory.load("worker"));
-
-        ActorSystem system = ActorSystem.create("VerySmallFileDownloadWorkerSystem", conf);
-
-        ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
+        createActorSystemAndCluster(port, "VerySmallFileDownloadWorker");
 
         for(int i=0; i<AppConfig.NUM_OF_ACTORS_PER_WORKER; i++) {
             system.actorOf(Worker.props(clusterClient, Props.create(VerySmallFileDownloader.class), workerType), workerType + "-worker-" + (i + 1));
@@ -88,12 +86,7 @@ public class ApplicationMain {
     }
 
     private static void startSmallFileDownloadWorker(int port, String workerType) {
-        Config conf = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
-                withFallback(ConfigFactory.load("worker"));
-
-        ActorSystem system = ActorSystem.create("SmallFileDownloadWorkerSystem", conf);
-
-        ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
+        createActorSystemAndCluster(port, "SmallFileDownloadWorker");
 
         for(int i=0; i<AppConfig.NUM_OF_ACTORS_PER_WORKER; i++) {
             system.actorOf(Worker.props(clusterClient, Props.create(SmallFileDownloader.class), workerType), workerType + "-" + (i + 1));
@@ -101,12 +94,7 @@ public class ApplicationMain {
     }
 
     private static void startMediumFileDownloadWorker(int port, String workerType) {
-        Config conf = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
-                withFallback(ConfigFactory.load("worker"));
-
-        ActorSystem system = ActorSystem.create("MediumFileDownloadWorkerSystem", conf);
-
-        ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
+        createActorSystemAndCluster(port, "MediumFileDownloadWorker");
 
         for(int i=0; i<AppConfig.NUM_OF_ACTORS_PER_WORKER; i++) {
             system.actorOf(Worker.props(clusterClient, Props.create(MediumFileDownloader.class), workerType), workerType + "-" + (i + 1));
@@ -114,15 +102,18 @@ public class ApplicationMain {
     }
 
     private static void startLargeFileDownloadWorker(int port, String workerType) {
-        Config conf = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
-                withFallback(ConfigFactory.load("worker"));
-
-        ActorSystem system = ActorSystem.create("LargeFileDownloadWorkerSystem", conf);
-
-        ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
-
+        createActorSystemAndCluster(port, "LargeFileDownloadWorker");
         for(int i=0; i<AppConfig.NUM_OF_ACTORS_PER_WORKER; i++) {
             system.actorOf(Worker.props(clusterClient, Props.create(LargeFileDownloader.class), workerType), workerType + "-" + (i + 1));
         }
+    }
+
+    private static void createActorSystemAndCluster(int port, String workerSystemName){
+        Config conf = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
+                withFallback(ConfigFactory.load("worker"));
+
+        system = ActorSystem.create(workerSystemName, conf);
+
+        clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
     }
 }
