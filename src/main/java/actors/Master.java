@@ -74,7 +74,7 @@ public class Master extends AbstractActor {
 //            }
 //        }
 //    }
-    //Cleanup task to remove workers every 30 secs
+    //TODO: Test Cleanup task to remove workers every 30 secs
 
     @Override
     public Receive createReceive() {
@@ -178,6 +178,7 @@ public class Master extends AbstractActor {
                     feedState = feedState.updated(feedFailed);
                     setFeedState(worker.workerType, feedState);
                     getSender().tell(new Ack(customerFeedName), getSelf());
+                    //TODO: Update JSON to Backoff mode
                 })
                 .match(Work.class, work -> {
                     for (Feed feed: work.feeds) {
@@ -197,7 +198,7 @@ public class Master extends AbstractActor {
                     ObjectMapper objectMapper = new ObjectMapper();
                     objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
                     feeds = objectMapper.readValue(jsonData, new TypeReference<List<Feed>>() {});
-                    List<Feed> filteredFeeds = feeds.stream().filter(f -> ((new Date().getTime() - f.getLastUpdated().getTime()) >= 120000L) || f.getOverride())
+                    List<Feed> filteredFeeds = feeds.stream().filter(f -> ((new Date().getTime() - f.getLastUpdated().getTime()) >= f.getInterval()) || f.getOverride())
                             .collect(Collectors.toList());
                     //for (Feed f: feeds)
                     //    log.info(f.toString());

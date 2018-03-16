@@ -5,9 +5,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/10MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 01:17:41"
+  "lastUpdated" : "2018-03-16 01:36:49"
 }, {
   "id" : 20,
   "company" : "CLIENTA",
@@ -15,9 +15,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/20MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 01:17:51"
+  "lastUpdated" : "2018-03-16 01:20:41"
 }, {
   "id" : 30,
   "company" : "CLIENTA",
@@ -25,9 +25,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/100MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 01:18:01"
+  "lastUpdated" : "2018-03-16 01:20:51"
 }, {
   "id" : 40,
   "company" : "CLIENTA",
@@ -35,9 +35,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/512MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-11 21:07:24"
+  "lastUpdated" : "2018-03-16 01:21:21"
 }, {
   "id" : 50,
   "company" : "CLIENTB",
@@ -45,9 +45,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/10MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 01:17:41"
+  "lastUpdated" : "2018-03-16 01:36:49"
 }, {
   "id" : 60,
   "company" : "CLIENTB",
@@ -55,9 +55,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/20MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 01:17:51"
+  "lastUpdated" : "2018-03-16 01:20:41"
 }, {
   "id" : 70,
   "company" : "CLIENTB",
@@ -65,9 +65,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/100MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 01:18:01"
+  "lastUpdated" : "2018-03-16 01:20:51"
 }, {
   "id" : 80,
   "company" : "CLIENTB",
@@ -75,9 +75,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/512MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-11 21:07:24"
+  "lastUpdated" : "2018-03-16 01:21:21"
 }, {
   "id" : 90,
   "company" : "CLIENTC",
@@ -85,9 +85,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/10MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 01:17:51"
+  "lastUpdated" : "2018-03-16 01:36:59"
 }, {
   "id" : 100,
   "company" : "CLIENTC",
@@ -95,9 +95,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/20MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 01:18:11"
+  "lastUpdated" : "2018-03-16 01:21:01"
 }, {
   "id" : 110,
   "company" : "CLIENTC",
@@ -105,9 +105,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/100MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-11 21:07:24"
+  "lastUpdated" : "2018-03-16 01:18:31"
 }, {
   "id" : 120,
   "company" : "CLIENTC",
@@ -115,9 +115,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/512MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-11 21:07:24"
+  "lastUpdated" : "2018-03-16 01:19:21"
 }, {
   "id" : 130,
   "company" : "CLIENTD",
@@ -125,9 +125,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/10MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 01:17:51"
+  "lastUpdated" : "2018-03-16 01:36:59"
 }, {
   "id" : 140,
   "company" : "CLIENTD",
@@ -135,9 +135,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/20MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 01:18:11"
+  "lastUpdated" : "2018-03-16 01:21:01"
 }, {
   "id" : 150,
   "company" : "CLIENTD",
@@ -145,9 +145,9 @@
   "url" : "http://ipv4.download.thinkbroadband.com/100MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-11 21:07:24"
+  "lastUpdated" : "2018-03-16 01:18:31"
 }, {
   "id" : 160,
   "company" : "CLIENTD",
@@ -155,7 +155,7 @@
   "url" : "http://ipv4.download.thinkbroadband.com/512MB.zip",
   "isActive" : true,
   "override" : false,
-  "interval" : 900000,
+  "interval" : 120000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-11 21:07:24"
+  "lastUpdated" : "2018-03-16 01:19:21"
 } ]

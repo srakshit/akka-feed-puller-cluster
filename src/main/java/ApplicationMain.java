@@ -25,6 +25,28 @@ public class ApplicationMain {
             startSmallFileDownloadWorker(3001, "small-file");
             startMediumFileDownloadWorker(3002, "medium-file");
             startLargeFileDownloadWorker(3003, "large-file");
+        }else {
+            int port = Integer.parseInt(args[0]);
+            String workerType = args[1];
+            if (2000 <= port && port <= 2999)
+                startMaster(port, "master");
+            else if (3000 <= port && port <= 3999) {
+                switch(workerType) {
+                    case "very-small-file" :
+                        startVerySmallFileDownloadWorker(port, workerType);
+                        break;
+                    case "small-file" :
+                        startSmallFileDownloadWorker(port, workerType);
+                        break;
+                    case "medium-file" :
+                        startMediumFileDownloadWorker(port, workerType);
+                        break;
+                    case "large-file" :
+                        startLargeFileDownloadWorker(port, workerType);
+                        break;
+                    default : throw new IllegalArgumentException("Worker Type not found");
+                }
+            }
         }
     }
 
