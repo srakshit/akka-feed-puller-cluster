@@ -1,4 +1,4 @@
-[{
+[ {
   "id" : 10,
   "company" : "CLIENTA",
   "feedName" : "very-small-file",
@@ -7,8 +7,8 @@
   "override" : false,
   "interval" : 900000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 00:02:41"
-},{
+  "lastUpdated" : "2018-03-16 01:17:41"
+}, {
   "id" : 20,
   "company" : "CLIENTA",
   "feedName" : "small-file",
@@ -17,8 +17,8 @@
   "override" : false,
   "interval" : 900000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-11 21:07:24"
-},{
+  "lastUpdated" : "2018-03-16 01:17:51"
+}, {
   "id" : 30,
   "company" : "CLIENTA",
   "feedName" : "medium-file",
@@ -27,8 +27,8 @@
   "override" : false,
   "interval" : 900000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-11 21:07:24"
-},{
+  "lastUpdated" : "2018-03-16 01:18:01"
+}, {
   "id" : 40,
   "company" : "CLIENTA",
   "feedName" : "large-file",
@@ -38,7 +38,7 @@
   "interval" : 900000,
   "backOff" : "",
   "lastUpdated" : "2018-03-11 21:07:24"
-},{
+}, {
   "id" : 50,
   "company" : "CLIENTB",
   "feedName" : "very-small-file",
@@ -47,8 +47,8 @@
   "override" : false,
   "interval" : 900000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 00:02:41"
-},{
+  "lastUpdated" : "2018-03-16 01:17:41"
+}, {
   "id" : 60,
   "company" : "CLIENTB",
   "feedName" : "small-file",
@@ -57,8 +57,8 @@
   "override" : false,
   "interval" : 900000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-11 21:07:20"
-},{
+  "lastUpdated" : "2018-03-16 01:17:51"
+}, {
   "id" : 70,
   "company" : "CLIENTB",
   "feedName" : "medium-file",
@@ -67,8 +67,8 @@
   "override" : false,
   "interval" : 900000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-11 21:07:24"
-},{
+  "lastUpdated" : "2018-03-16 01:18:01"
+}, {
   "id" : 80,
   "company" : "CLIENTB",
   "feedName" : "large-file",
@@ -78,7 +78,7 @@
   "interval" : 900000,
   "backOff" : "",
   "lastUpdated" : "2018-03-11 21:07:24"
-},{
+}, {
   "id" : 90,
   "company" : "CLIENTC",
   "feedName" : "very-small-file",
@@ -87,8 +87,8 @@
   "override" : false,
   "interval" : 900000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 00:02:41"
-},{
+  "lastUpdated" : "2018-03-16 01:17:51"
+}, {
   "id" : 100,
   "company" : "CLIENTC",
   "feedName" : "small-file",
@@ -97,8 +97,8 @@
   "override" : false,
   "interval" : 900000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-11 21:07:20"
-},{
+  "lastUpdated" : "2018-03-16 01:18:11"
+}, {
   "id" : 110,
   "company" : "CLIENTC",
   "feedName" : "medium-file",
@@ -108,7 +108,7 @@
   "interval" : 900000,
   "backOff" : "",
   "lastUpdated" : "2018-03-11 21:07:24"
-},{
+}, {
   "id" : 120,
   "company" : "CLIENTC",
   "feedName" : "large-file",
@@ -118,7 +118,7 @@
   "interval" : 900000,
   "backOff" : "",
   "lastUpdated" : "2018-03-11 21:07:24"
-},{
+}, {
   "id" : 130,
   "company" : "CLIENTD",
   "feedName" : "very-small-file",
@@ -127,8 +127,8 @@
   "override" : false,
   "interval" : 900000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-16 00:02:41"
-},{
+  "lastUpdated" : "2018-03-16 01:17:51"
+}, {
   "id" : 140,
   "company" : "CLIENTD",
   "feedName" : "small-file",
@@ -137,8 +137,8 @@
   "override" : false,
   "interval" : 900000,
   "backOff" : "",
-  "lastUpdated" : "2018-03-11 21:07:20"
-},{
+  "lastUpdated" : "2018-03-16 01:18:11"
+}, {
   "id" : 150,
   "company" : "CLIENTD",
   "feedName" : "medium-file",
@@ -148,7 +148,7 @@
   "interval" : 900000,
   "backOff" : "",
   "lastUpdated" : "2018-03-11 21:07:24"
-},{
+}, {
   "id" : 160,
   "company" : "CLIENTD",
   "feedName" : "large-file",
@@ -158,4 +158,4 @@
   "interval" : 900000,
   "backOff" : "",
   "lastUpdated" : "2018-03-11 21:07:24"
-}]
+} ]

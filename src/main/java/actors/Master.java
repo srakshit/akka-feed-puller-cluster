@@ -158,7 +158,10 @@ public class Master extends AbstractActor {
                 })
                 .match(WorkResult.class, result -> {
                     log.info("Updating last update time of feed {} in JSON config", result.feed.getCompany() + "-" + result.feed.getFeedName());
-                    feeds.stream().filter(f -> f.getId() == result.feed.getId()).forEach(f -> f.setLastUpdated(result.lastUpdated));
+                    feeds.forEach(feed -> {
+                        if (feed.getId() == result.feed.getId())
+                            feed.setLastUpdated(result.lastUpdated);
+                    });
 
                     ObjectMapper mapper = new ObjectMapper();
                     ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
@@ -194,12 +197,12 @@ public class Master extends AbstractActor {
                     ObjectMapper objectMapper = new ObjectMapper();
                     objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
                     feeds = objectMapper.readValue(jsonData, new TypeReference<List<Feed>>() {});
-                    feeds = feeds.stream().filter(f -> ((new Date().getTime() - f.getLastUpdated().getTime()) >= 120000L) || f.getOverride())
+                    List<Feed> filteredFeeds = feeds.stream().filter(f -> ((new Date().getTime() - f.getLastUpdated().getTime()) >= 120000L) || f.getOverride())
                             .collect(Collectors.toList());
                     //for (Feed f: feeds)
                     //    log.info(f.toString());
 
-                    getSender().tell(new Work(feeds), getSelf());
+                    getSender().tell(new Work(filteredFeeds), getSelf());
                 })
                 .matchEquals(CleanupTick, x -> {
                     log.debug("Cleaning up workers that failed to provide heartbeat");
