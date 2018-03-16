@@ -4,7 +4,7 @@ import akka.actor.AbstractActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import actors.Worker.WorkComplete;
-import model.Feed;
+import model.feed.Feed;
 
 import java.util.Date;
 

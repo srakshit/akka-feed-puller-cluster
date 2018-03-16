@@ -1,4 +1,4 @@
-package model;
+package model.worker;
 
 /**
  * Created by rakshit on 13/03/2018.

@@ -13,9 +13,14 @@ import akka.cluster.singleton.ClusterSingletonManager;
 import akka.cluster.singleton.ClusterSingletonManagerSettings;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import config.AppConfig;
+
+import java.util.Arrays;
 
 public class ApplicationMain {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws Exception {
+        AppConfig.loadConfigFromProperties();
+
         if (args.length == 0){
             startMaster(2551, "master");
             Thread.sleep(5000);
@@ -28,9 +33,12 @@ public class ApplicationMain {
         }else {
             int port = Integer.parseInt(args[0]);
             String workerType = args[1];
-            if (2000 <= port && port <= 2999)
+            int[] masterPortArr = Arrays.stream(AppConfig.MASTER_PORT_RANGE.split(":")).mapToInt(x -> Integer.parseInt(x)).toArray();
+            int[] workerPortArr = Arrays.stream(AppConfig.WORKER_PORT_RANGE.split(":")).mapToInt(x -> Integer.parseInt(x)).toArray();
+
+            if (masterPortArr[0] <= port && port <= masterPortArr[1])
                 startMaster(port, "master");
-            else if (3000 <= port && port <= 3999) {
+            else if (workerPortArr[0] <= port && port <= workerPortArr[1]) {
                 switch(workerType) {
                     case "very-small-file" :
                         startVerySmallFileDownloadWorker(port, workerType);
@@ -74,7 +82,7 @@ public class ApplicationMain {
 
         ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
 
-        for(int i=0; i<100; i++) {
+        for(int i=0; i<AppConfig.NUM_OF_ACTORS_PER_WORKER; i++) {
             system.actorOf(Worker.props(clusterClient, Props.create(VerySmallFileDownloader.class), workerType), workerType + "-worker-" + (i + 1));
         }
     }
@@ -87,7 +95,7 @@ public class ApplicationMain {
 
         ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
 
-        for(int i=0; i<100; i++) {
+        for(int i=0; i<AppConfig.NUM_OF_ACTORS_PER_WORKER; i++) {
             system.actorOf(Worker.props(clusterClient, Props.create(SmallFileDownloader.class), workerType), workerType + "-" + (i + 1));
         }
     }
@@ -100,7 +108,7 @@ public class ApplicationMain {
 
         ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
 
-        for(int i=0; i<100; i++) {
+        for(int i=0; i<AppConfig.NUM_OF_ACTORS_PER_WORKER; i++) {
             system.actorOf(Worker.props(clusterClient, Props.create(MediumFileDownloader.class), workerType), workerType + "-" + (i + 1));
         }
     }
@@ -113,7 +121,7 @@ public class ApplicationMain {
 
         ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
 
-        for(int i=0; i<100; i++) {
+        for(int i=0; i<AppConfig.NUM_OF_ACTORS_PER_WORKER; i++) {
             system.actorOf(Worker.props(clusterClient, Props.create(LargeFileDownloader.class), workerType), workerType + "-" + (i + 1));
         }
     }

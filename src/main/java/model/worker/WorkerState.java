@@ -1,4 +1,4 @@
-package model;
+package model.worker;
 
 import akka.actor.ActorRef;
 

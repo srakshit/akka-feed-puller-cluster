@@ -13,7 +13,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import model.*;
+import config.AppConfig;
+import model.feed.*;
+import model.worker.Busy;
+import model.worker.Idle;
+import model.worker.WorkerState;
 import scala.concurrent.duration.Duration;
 
 import java.io.File;
@@ -85,17 +89,17 @@ public class Master extends AbstractActor {
                     }
 
                     if (this.loadFeedConfigScheduler == null) {
-                        log.info("Started scheduler to retrieve config from JSON every 1 min");
+                        log.info("Started scheduler to retrieve config from JSON every 60 seconds");
                         this.loadFeedConfigScheduler = getContext().getSystem().scheduler().schedule(
                                 Duration.Zero(),
-                                Duration.create(1, TimeUnit.MINUTES),
+                                Duration.create(AppConfig.MASTER_LOAD_FEED_INTERVAL, TimeUnit.SECONDS),
                                 getSelf(), LoadFeedConfig.class,
                                 getContext().dispatcher(),
                                 getSelf());
                         log.info("Started scheduler to remove workers that missed heartbeat 3 times");
                         this.cleanUpUnRespondingWorkers = getContext().getSystem().scheduler().schedule(
                                 Duration.Zero(),
-                                Duration.create(30, TimeUnit.SECONDS),
+                                Duration.create(AppConfig.MASTER_CLEANUP_SCHDULE_INTERVAL, TimeUnit.SECONDS),
                                 getSelf(), CleanupTick,
                                 getContext().dispatcher(),
                                 getSelf());
@@ -166,6 +170,11 @@ public class Master extends AbstractActor {
                         workers.put(worker.workerId, workers.get(worker.workerId).copyWithStatus(Idle.getInstance()));
                     }
 
+                    FeedFailed feedFailed = new FeedFailed(worker.feed);
+                    feedState = feedState.updated(feedFailed);
+                    setFeedState(worker.workerType, feedState);
+                    getSender().tell(new Ack(customerFeedName), getSelf());
+
                     log.info("Updating backOff of feed {} in JSON config", customerFeedName);
                     feeds.forEach(feed -> {
                         if (feed.getId() == feed.getId()) {
@@ -177,12 +186,6 @@ public class Master extends AbstractActor {
                     ObjectMapper mapper = new ObjectMapper();
                     ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
                     writer.writeValue(new File("feedConfig.json"), feeds);
-
-                    FeedFailed feedFailed = new FeedFailed(worker.feed);
-                    feedState = feedState.updated(feedFailed);
-                    setFeedState(worker.workerType, feedState);
-                    getSender().tell(new Ack(customerFeedName), getSelf());
-                    //TODO: Update JSON to Backoff mode
                 })
                 .match(Work.class, work -> {
                     for (Feed feed: work.feeds) {

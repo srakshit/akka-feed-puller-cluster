@@ -1,4 +1,4 @@
-package model;
+package model.feed;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 

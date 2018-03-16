@@ -1,4 +1,4 @@
-package model;
+package model.feed;
 
 import java.util.HashMap;
 import java.util.HashSet;

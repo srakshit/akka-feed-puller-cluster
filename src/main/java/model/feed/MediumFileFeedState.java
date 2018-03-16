@@ -1,4 +1,4 @@
-package model;
+package model.feed;
 
 /**
  * Created by rakshit on 14/03/2018.

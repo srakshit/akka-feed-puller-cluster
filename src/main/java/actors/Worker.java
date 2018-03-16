@@ -4,7 +4,8 @@ import akka.actor.*;
 import akka.cluster.client.ClusterClient;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import model.Feed;
+import config.AppConfig;
+import model.feed.Feed;
 import scala.concurrent.duration.Duration;
 
 import java.util.Date;
@@ -21,8 +22,6 @@ import static akka.actor.SupervisorStrategy.stop;
  */
 public class Worker extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-
-    private static final int MAX_ACTORS = 100;
 
     public static final Props props(ActorRef clusterClient, Props workExecutorProps, String workerType) {
         return Props.create(Worker.class, clusterClient, workExecutorProps, workerType);
@@ -42,7 +41,7 @@ public class Worker extends AbstractActor {
         this.workerType = workerType;
         this.registerTask = getContext().system().scheduler().schedule(
                                 Duration.Zero(),
-                                Duration.create(10, TimeUnit.SECONDS),
+                                Duration.create(AppConfig.WORKER_HEARTBEAT_INTERVAL, TimeUnit.SECONDS),
                                 clusterClient,
                                 new ClusterClient.SendToAll("/user/master/singleton", new RegisterWorker(workerType, workerId)),
                                 getContext().dispatcher(),
