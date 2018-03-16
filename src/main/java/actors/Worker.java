@@ -6,6 +6,8 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import model.Feed;
 import scala.concurrent.duration.Duration;
+
+import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -19,6 +21,8 @@ import static akka.actor.SupervisorStrategy.stop;
  */
 public class Worker extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().system(), this);
+
+    private static final int MAX_ACTORS = 100;
 
     public static final Props props(ActorRef clusterClient, Props workExecutorProps, String workerType) {
         return Props.create(Worker.class, clusterClient, workExecutorProps, workerType);
@@ -90,7 +94,7 @@ public class Worker extends AbstractActor {
                         sendToMaster(new WorkerRequestsWork(workerType, workerId));
                     }
                 })
-                .match(WorkComplete.class, complete -> sendToMaster(new WorkIsDone(workerType, workerId, currentFeed, complete.result)))
+                .match(WorkComplete.class, complete -> sendToMaster(new WorkIsDone(workerType, workerId, currentFeed, complete.lastUpdated)))
                 .match(Feed.class, feed -> {
                     if (isIdle) {
                         isIdle = false;
@@ -112,15 +116,15 @@ public class Worker extends AbstractActor {
     }
 
     public static class WorkComplete {
-        private final String result;
+        private final Date lastUpdated;
 
-        public WorkComplete(String result) {
-            this.result = result;
+        public WorkComplete(Date lastUpdated) {
+            this.lastUpdated = lastUpdated;
         }
 
         @Override
         public String toString() {
-            return "WorkComplete: {result=" + result +"}";
+            return "WorkComplete: {lastUpdated=" + lastUpdated +"}";
         }
     }
 }

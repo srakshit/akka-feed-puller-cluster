@@ -11,16 +11,21 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import model.*;
 import scala.concurrent.duration.Duration;
 
+import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class Master extends AbstractActor {
     public static Props props() {
@@ -29,6 +34,7 @@ public class Master extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     Cluster cluster = Cluster.get(getContext().getSystem());
 
+    private List<Feed> feeds;
     private HashMap<String, WorkerState> workers = new HashMap<>();
     private FeedState verySmallFileFeedState = new VerySmallFileFeedState();
     private FeedState smallFileFeedState = new SmallFileFeedState();
@@ -126,9 +132,10 @@ public class Master extends AbstractActor {
                     FeedState feedState = getFeedState(worker.workerType);
                     String customerFeedName = worker.feed.getCompany() + "-" + worker.feed.getFeedName();
                     if (feedState.isDownloaded(customerFeedName)) {
+                        //TODO: What is the need of this logic?
                         getSender().tell(new Ack(customerFeedName), getSelf());
                     } else {
-                        log.info("Worker {} completed downloaded feed {} at {}", worker.workerId, customerFeedName, worker.result);
+                        log.info("Worker {} completed downloaded feed {} at {}", worker.workerId, customerFeedName, worker.lastUpdated);
                         if (workers.get(worker.workerId).status.isBusy()) {
                             workers.put(worker.workerId, workers.get(worker.workerId).copyWithStatus(Idle.getInstance()));
                         }
@@ -136,7 +143,16 @@ public class Master extends AbstractActor {
                         feedState = feedState.updated(feedCompleted);
                         setFeedState(worker.workerType, feedState);
                         getSender().tell(new Ack(customerFeedName), getSelf());
+                        getSelf().tell(new WorkResult(worker.feed, worker.lastUpdated), getSelf());
                     }
+                })
+                .match(WorkResult.class, result -> {
+                    log.info("Updating last update time of feed {} in JSON config", result.feed.getCompany() + "-" + result.feed.getFeedName());
+                    feeds.stream().filter(f -> f.getId() == result.feed.getId()).forEach(f -> f.setLastUpdated(result.lastUpdated));
+
+                    ObjectMapper mapper = new ObjectMapper();
+                    ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
+                    writer.writeValue(new File("feedConfig.json"), feeds);
                 })
                 .match(WorkFailed.class, worker -> {
                     FeedState feedState = getFeedState(worker.workerType);
@@ -167,8 +183,9 @@ public class Master extends AbstractActor {
                     byte[] jsonData = Files.readAllBytes(Paths.get("feedConfig.json"));
                     ObjectMapper objectMapper = new ObjectMapper();
                     objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
-                    List<Feed> feeds = objectMapper.readValue(jsonData, new TypeReference<List<Feed>>() {});
-
+                    feeds = objectMapper.readValue(jsonData, new TypeReference<List<Feed>>() {});
+                    feeds = feeds.stream().filter(f -> ((new Date().getTime() - f.getLastUpdated().getTime()) > 120000L) || f.getOverride())
+                                            .collect(Collectors.toList());
                     //for (Feed f: feeds)
                     //    log.info(f.toString());
 
@@ -273,18 +290,18 @@ public class Master extends AbstractActor {
         private final String workerType;
         private final String workerId;
         private final Feed feed;
-        private final String result;
+        private final Date lastUpdated;
 
-        public WorkIsDone(String workerType, String workerId, Feed feed, String result) {
+        public WorkIsDone(String workerType, String workerId, Feed feed, Date lastUpdated) {
             this.workerType = workerType;
             this.workerId = workerId;
             this.feed = feed;
-            this.result = result;
+            this.lastUpdated = lastUpdated;
         }
 
         @Override
         public String toString() {
-            return "WorkIsDone: {workerType=" + workerType + ", workerId=" + workerId + ", feed=" + feed  + ", result=" + result +"}";
+            return "WorkIsDone: {workerType=" + workerType + ", workerId=" + workerId + ", feed=" + feed  + ", lastUpdated=" + lastUpdated +"}";
         }
     }
 
@@ -302,6 +319,21 @@ public class Master extends AbstractActor {
         @Override
         public String toString() {
             return "WorkFailed: {workerType=" + workerType + ", workerId=" + workerId + ", feed=" + feed +"}";
+        }
+    }
+
+    public static final class WorkResult implements Serializable {
+        private final Feed feed;
+        private final Date lastUpdated;
+
+        public WorkResult(Feed feed, Date lastUpdated) {
+            this.feed = feed;
+            this.lastUpdated = lastUpdated;
+        }
+
+        @Override
+        public String toString() {
+            return "WorkResult: {feed=" + feed + ", lastUpdated=" + lastUpdated + "}";
         }
     }
 
