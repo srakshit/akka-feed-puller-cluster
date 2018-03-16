@@ -69,6 +69,7 @@ public class Master extends AbstractActor {
     //TODO: Worker failed and handle backoff
     //TODO: Master event persistence
     //TODO: Dockerise app to demonstrate
+    //TODO: Add downloading of files
 
     @Override
     public Receive createReceive() {
@@ -250,15 +251,18 @@ public class Master extends AbstractActor {
         objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
         feeds = objectMapper.readValue(jsonData, new TypeReference<List<Feed>>() {});
 
+        //TODO: Test Feed config
+        //Accept only active feeds - It goes through the below logic if the feed is active
         //Accept feed if difference between present time and lastupdate time is greater than feed interval
         //Accept feed if difference between present time and backoff time is greater than back-off interval
         //Accept feed if feed is overridden, so that it has priority
         List<Feed> filteredFeeds = feeds.stream().filter(
                                         f -> {
                                             try {
-                                                return ((new Date().getTime() - f.getLastUpdated().getTime()) >= f.getInterval()) ||
+                                                return f.getIsActive() &&
+                                                        (((new Date().getTime() - f.getLastUpdated().getTime()) >= f.getInterval()) ||
                                                         (f.getBackOff() != "" && (new Date().getTime() - (AppConfig.DATEFORMAT.parse(f.getBackOff())).getTime()) >= AppConfig.BACKOFF_INTERVAL_MILLISECONDS) ||
-                                                        f.getOverride();
+                                                        f.getOverride());
                                             } catch (ParseException e) {
                                                 log.error("Failed to parse backoff datetime {}", f.getBackOff());
                                             }
