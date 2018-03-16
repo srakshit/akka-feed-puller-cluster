@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import config.AppConfig;
 import model.feed.*;
+import model.protocol.*;
 import model.worker.Busy;
 import model.worker.Idle;
 import model.worker.WorkerState;
@@ -22,7 +23,6 @@ import scala.concurrent.duration.Duration;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.ParseException;
@@ -66,6 +66,9 @@ public class Master extends AbstractActor {
     }
 
     //TODO: Test Cleanup task to remove workers every 30 secs
+    //TODO: Worker failed and handle backoff
+    //TODO: Master event persistence
+    //TODO: Dockerise app to demonstrate
 
     @Override
     public Receive createReceive() {
@@ -102,7 +105,7 @@ public class Master extends AbstractActor {
 
         feedState = getFeedState(worker.workerType);
         if (feedState.hasFeed()) {
-            getSender().tell(WorkIsReady.instance, getSelf());
+            getSender().tell(WorkIsReady.getInstance(), getSelf());
         }
     }
 
@@ -254,7 +257,7 @@ public class Master extends AbstractActor {
                                         f -> {
                                             try {
                                                 return ((new Date().getTime() - f.getLastUpdated().getTime()) >= f.getInterval()) ||
-                                                        ((new Date().getTime() - (AppConfig.DATEFORMAT.parse(f.getBackOff())).getTime()) >= AppConfig.BACKOFF_INTERVAL_MILLISECONDS) ||
+                                                        (f.getBackOff() != "" && (new Date().getTime() - (AppConfig.DATEFORMAT.parse(f.getBackOff())).getTime()) >= AppConfig.BACKOFF_INTERVAL_MILLISECONDS) ||
                                                         f.getOverride();
                                             } catch (ParseException e) {
                                                 log.error("Failed to parse backoff datetime {}", f.getBackOff());
@@ -335,118 +338,4 @@ public class Master extends AbstractActor {
     }
 
     public static final class LoadFeedConfig {}
-
-    public static final class Ack implements Serializable {
-        final String feedName;
-
-        public Ack(String feedName) {
-            this.feedName = feedName;
-        }
-
-        @Override
-        public String toString() {
-            return "Ack {" + "feedName='" + feedName + "}";
-        }
-    }
-
-    public static final class Work implements Serializable {
-        private final List<Feed> feeds;
-
-        public Work(List<Feed> feeds) {
-            this.feeds = feeds;
-        }
-
-        @Override
-        public String toString() {
-            return "Work: {feeds=" + feeds +"}";
-        }
-    }
-
-    public static final class RegisterWorker implements Serializable {
-        private final String workerType;
-        private final String workerId;
-
-        public RegisterWorker(String workerType, String workerId) {
-            this.workerType = workerType;
-            this.workerId = workerId;
-        }
-
-        @Override
-        public String toString() {
-            return "HeartBeat: {workerType=" + workerType + ", workerId=" + workerId +"}";
-        }
-    }
-
-    public static final class WorkerRequestsWork implements Serializable {
-        private final String workerType;
-        private final String workerId;
-
-        public WorkerRequestsWork(String workerType, String workerId) {
-            this.workerType = workerType;
-            this.workerId = workerId;
-        }
-
-        @Override
-        public String toString() {
-            return "WorkerRequestsWork: {workerType=" + workerType + ", workerId=" + workerId +"}";
-        }
-    }
-
-    public static final class WorkIsDone implements Serializable {
-        private final String workerType;
-        private final String workerId;
-        private final Feed feed;
-        private final Date lastUpdated;
-
-        public WorkIsDone(String workerType, String workerId, Feed feed, Date lastUpdated) {
-            this.workerType = workerType;
-            this.workerId = workerId;
-            this.feed = feed;
-            this.lastUpdated = lastUpdated;
-        }
-
-        @Override
-        public String toString() {
-            return "WorkIsDone: {workerType=" + workerType + ", workerId=" + workerId + ", feed=" + feed  + ", lastUpdated=" + lastUpdated +"}";
-        }
-    }
-
-    public static final class WorkFailed implements Serializable {
-        private final String workerType;
-        private final String workerId;
-        private final Feed feed;
-
-        public WorkFailed(String workerType, String workerId, Feed feed) {
-            this.workerType = workerType;
-            this.workerId = workerId;
-            this.feed = feed;
-        }
-
-        @Override
-        public String toString() {
-            return "WorkFailed: {workerType=" + workerType + ", workerId=" + workerId + ", feed=" + feed +"}";
-        }
-    }
-
-    public static final class WorkResult implements Serializable {
-        private final Feed feed;
-        private final Date lastUpdated;
-
-        public WorkResult(Feed feed, Date lastUpdated) {
-            this.feed = feed;
-            this.lastUpdated = lastUpdated;
-        }
-
-        @Override
-        public String toString() {
-            return "WorkResult: {feed=" + feed + ", lastUpdated=" + lastUpdated + "}";
-        }
-    }
-
-    public static final class WorkIsReady implements Serializable {
-        private static final WorkIsReady instance = new WorkIsReady();
-        public static WorkIsReady getInstance() {
-            return instance;
-        }
-    }
 }

@@ -6,13 +6,10 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import config.AppConfig;
 import model.feed.Feed;
+import model.protocol.*;
 import scala.concurrent.duration.Duration;
-
-import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
-import static actors.Master.*;
 import static akka.actor.SupervisorStrategy.escalate;
 import static akka.actor.SupervisorStrategy.restart;
 import static akka.actor.SupervisorStrategy.stop;
@@ -112,18 +109,5 @@ public class Worker extends AbstractActor {
                     }
                 })
                 .build();
-    }
-
-    public static class WorkComplete {
-        private final Date lastUpdated;
-
-        public WorkComplete(Date lastUpdated) {
-            this.lastUpdated = lastUpdated;
-        }
-
-        @Override
-        public String toString() {
-            return "WorkComplete: {lastUpdated=" + lastUpdated +"}";
-        }
     }
 }

@@ -1,10 +1,10 @@
 package actors;
 
-import actors.Worker.WorkComplete;
 import akka.actor.AbstractActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import model.feed.Feed;
+import model.protocol.WorkComplete;
 
 import java.util.Date;
 

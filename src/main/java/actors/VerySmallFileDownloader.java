@@ -3,8 +3,8 @@ package actors;
 import akka.actor.AbstractActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import actors.Worker.WorkComplete;
 import model.feed.Feed;
+import model.protocol.WorkComplete;
 
 import java.util.Date;
 
