@@ -21,10 +21,10 @@ public class ApplicationMain {
             Thread.sleep(5000);
             startMaster(2552, "master");
             Thread.sleep(5000);
-            startVerySmallFileDownloadWorker(3000, "very-small-file-worker");
-            startSmallFileDownloadWorker(3000, "small-file-worker");
-            startMediumFileDownloadWorker(3000, "medium-file-worker");
-            startLargeFileDownloadWorker(3000, "large-file-worker");
+            startVerySmallFileDownloadWorker(3000, "very-small-file");
+            startSmallFileDownloadWorker(3001, "small-file");
+            startMediumFileDownloadWorker(3002, "medium-file");
+            startLargeFileDownloadWorker(3003, "large-file");
         }
     }
 
@@ -53,7 +53,7 @@ public class ApplicationMain {
         ActorRef clusterClient = system.actorOf(ClusterClient.props(ClusterClientSettings.create(system)),"clusterClient");
 
         for(int i=0; i<2; i++) {
-            system.actorOf(Worker.props(clusterClient, Props.create(VerySmallFileDownloader.class), workerType), workerType + "-" + (i + 1));
+            system.actorOf(Worker.props(clusterClient, Props.create(VerySmallFileDownloader.class), workerType), workerType + "-worker-" + (i + 1));
         }
     }
 

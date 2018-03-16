@@ -5,7 +5,6 @@ import akka.actor.Cancellable;
 import akka.actor.Props;
 import akka.cluster.Cluster;
 import akka.cluster.ClusterEvent;
-import akka.cluster.Member;
 import akka.cluster.client.ClusterClientReceptionist;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
@@ -21,9 +20,7 @@ import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -41,6 +38,9 @@ public class Master extends AbstractActor {
     private FeedState mediumFileFeedState = new MediumFileFeedState();
     private FeedState largeFileFeedState = new LargeFileFeedState();
     private Cancellable loadFeedConfigScheduler;
+    private Cancellable cleanUpUnRespondingWorkers;
+
+    private static final String CleanupTick = "Tick";
 
     public Master() {
         ClusterClientReceptionist.get(getContext().system()).registerService(getSelf());
@@ -55,24 +55,25 @@ public class Master extends AbstractActor {
     @Override
     public void postStop() {
         loadFeedConfigScheduler.cancel();
+        cleanUpUnRespondingWorkers.cancel();
         cluster.unsubscribe(getSelf());
     }
 
-    private void notifyWorkers(){
-        String[] workerType = {"very-small-file", "small-file", "medium-file", "large-file"};
-        FeedState feedState;
-        for (String type: workerType) {
-            feedState = getFeedState(type);
-            if (feedState.hasFeed()) {
-                for (WorkerState state: workers.values()) {
-                    if (state.type.equalsIgnoreCase(type) && state.status.isIdle()) {
-                        log.info("Notifying idle workers about incoming feeds");
-                        state.ref.tell(WorkIsReady.instance, getSelf());
-                    }
-                }
-            }
-        }
-    }
+//    private void notifyWorkers(){
+//        String[] workerType = {"very-small-file", "small-file", "medium-file", "large-file"};
+//        FeedState feedState;
+//        for (String type: workerType) {
+//            feedState = getFeedState(type);
+//            if (feedState.hasFeed()) {
+//                for (WorkerState state: workers.values()) {
+//                    if (state.type.equalsIgnoreCase(type) && state.status.isIdle()) {
+//                        log.info("Notifying idle workers about incoming feeds");
+//                        state.ref.tell(WorkIsReady.instance, getSelf());
+//                    }
+//                }
+//            }
+//        }
+//    }
     //Cleanup task to remove workers every 30 secs
 
     @Override
@@ -83,13 +84,15 @@ public class Master extends AbstractActor {
                 .match(ClusterEvent.MemberRemoved.class, mRemoved -> log.info("Member is Removed: {}", mRemoved.member()))
                 .match(RegisterWorker.class, worker -> {
                     FeedState feedState;
-                    if (workers.containsKey(worker.workerId)) {
+                    log.debug("Worker {} of type {} is {}",
+                            worker.workerId,
+                            worker.workerType,
+                            workers.containsKey(worker.workerId) ? "Re-Registered" : "Registered");
+
+                    if (workers.containsKey(worker.workerId))
                         workers.put(worker.workerId, workers.get(worker.workerId).copyWithRef(getSender()));
-                        log.info("Worker Re-Registered : " + worker.toString());
-                    } else {
+                    else
                         workers.put(worker.workerId, new WorkerState(getSender(), worker.workerType, Idle.getInstance()));
-                        log.info("Worker Registered : " + worker.toString());
-                    }
 
                     feedState = getFeedState(worker.workerType);
                     if (feedState.hasFeed()) {
@@ -102,6 +105,13 @@ public class Master extends AbstractActor {
                                 Duration.Zero(),
                                 Duration.create(1, TimeUnit.MINUTES),
                                 getSelf(), LoadFeedConfig.class,
+                                getContext().dispatcher(),
+                                getSelf());
+                        log.info("Started scheduler to remove workers that missed heartbeat 3 times");
+                        this.cleanUpUnRespondingWorkers = getContext().getSystem().scheduler().schedule(
+                                Duration.Zero(),
+                                Duration.create(30, TimeUnit.SECONDS),
+                                getSelf(), CleanupTick,
                                 getContext().dispatcher(),
                                 getSelf());
                     }
@@ -125,7 +135,7 @@ public class Master extends AbstractActor {
                             log.error("Unregistered worker {} can not request feed", worker.workerId);
                         }
                     } else {
-                        log.info("Sit idle {}. Will let you know when feed will come.", worker.workerId);
+                        log.debug("Sit idle {}. Will let you know when feed will come.", worker.workerId);
                     }
                 })
                 .match(WorkIsDone.class, worker -> {
@@ -184,12 +194,22 @@ public class Master extends AbstractActor {
                     ObjectMapper objectMapper = new ObjectMapper();
                     objectMapper.configure(JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
                     feeds = objectMapper.readValue(jsonData, new TypeReference<List<Feed>>() {});
-                    feeds = feeds.stream().filter(f -> ((new Date().getTime() - f.getLastUpdated().getTime()) > 120000L) || f.getOverride())
-                                            .collect(Collectors.toList());
+                    feeds = feeds.stream().filter(f -> ((new Date().getTime() - f.getLastUpdated().getTime()) >= 120000L) || f.getOverride())
+                            .collect(Collectors.toList());
                     //for (Feed f: feeds)
                     //    log.info(f.toString());
 
                     getSender().tell(new Work(feeds), getSelf());
+                })
+                .matchEquals(CleanupTick, x -> {
+                    log.debug("Cleaning up workers that failed to provide heartbeat");
+                    Iterator it = workers.entrySet().iterator();
+                    while (it.hasNext()) {
+                        Map.Entry<String, WorkerState> worker = (Map.Entry)it.next();
+                        if (((new Date()).getTime() - worker.getValue().lastHeartBeat.getTime()) >= 30000L) {
+                            log.debug("Removing worker {} from list", worker.getKey());
+                        }
+                    }
                 })
                 .build();
     }
@@ -257,17 +277,15 @@ public class Master extends AbstractActor {
     public static final class RegisterWorker implements Serializable {
         private final String workerType;
         private final String workerId;
-        private final boolean isIdle;
 
-        public RegisterWorker(String workerType, String workerId, boolean isIdle) {
+        public RegisterWorker(String workerType, String workerId) {
             this.workerType = workerType;
             this.workerId = workerId;
-            this.isIdle = isIdle;
         }
 
         @Override
         public String toString() {
-            return "RegisterWorker: {workerType=" + workerType + ", workerId=" + workerId +", status=" + (isIdle ? "true" : "false") +"}";
+            return "RegisterWorker: {workerType=" + workerType + ", workerId=" + workerId +"}";
         }
     }
 

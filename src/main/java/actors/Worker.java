@@ -44,7 +44,7 @@ public class Worker extends AbstractActor {
                                 Duration.Zero(),
                                 Duration.create(10, TimeUnit.SECONDS),
                                 clusterClient,
-                                new ClusterClient.SendToAll("/user/master/singleton", new RegisterWorker(workerType, workerId, isIdle)),
+                                new ClusterClient.SendToAll("/user/master/singleton", new RegisterWorker(workerType, workerId)),
                                 getContext().dispatcher(),
                                 getSelf());
         }
@@ -90,7 +90,7 @@ public class Worker extends AbstractActor {
         return receiveBuilder()
                 .match(WorkIsReady.class, x -> {
                     if (isIdle) {
-                        log.info("Requesting work from master");
+                        log.debug("Worker {} of type {} Requesting work from master", workerId, workerType);
                         sendToMaster(new WorkerRequestsWork(workerType, workerId));
                     }
                 })

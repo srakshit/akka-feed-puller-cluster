@@ -4,6 +4,7 @@ import actors.Worker.WorkComplete;
 import akka.actor.AbstractActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import model.Feed;
 
 import java.util.Date;
 
@@ -16,9 +17,10 @@ public class LargeFileDownloader extends AbstractActor {
     @Override
     public Receive createReceive() {
         return receiveBuilder()
-                .match(Object.class, x -> {
-                    log.info("Doing some work!");
-                    Thread.sleep(10000);
+                .match(Feed.class, feed -> {
+                    String customerFeedName = feed.getCompany() + "-" + feed.getFeedName();
+                    log.info("Downloading feed {}", customerFeedName);
+                    Thread.sleep(60000);
                     getSender().tell(new WorkComplete(new Date()), getSelf());
                 })
                 .build();
