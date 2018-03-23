@@ -20,7 +20,8 @@ public class VerySmallFileDownloader extends AbstractActor {
                 .match(Feed.class, feed -> {
                     String customerFeedName = feed.getCompany() + "-" + feed.getFeedName();
                     log.info("Downloading feed {}", customerFeedName);
-                    Thread.sleep(10000);
+                    //Thread.sleep(10000);
+                    FeedDownload.download(feed);
                     getSender().tell(new WorkComplete(new Date()), getSelf());
                 })
                 .build();

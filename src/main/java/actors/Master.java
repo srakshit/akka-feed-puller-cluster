@@ -19,6 +19,7 @@ import model.protocol.*;
 import model.worker.Busy;
 import model.worker.Idle;
 import model.worker.WorkerState;
+import scala.App;
 import scala.concurrent.duration.Duration;
 
 import java.io.File;
@@ -116,7 +117,7 @@ public class Master extends AbstractActor {
             if (workers.containsKey(worker.workerId)) {
                 WorkerState state = workers.get(worker.workerId);
                 //Only assign work to worker if the worker is idle and
-                //available client connection is less than amx concurrent download for the client
+                //available client connection is less than max concurrent download for the client
                 if (state != null && state.status.isIdle()) {
                     Feed feed = feedState.peekFeed();
 
@@ -221,7 +222,7 @@ public class Master extends AbstractActor {
         feeds.forEach(feed -> {
             if (feed.getId() == feed.getId()) {
                 feed.setOverride(false);
-                feed.setBackOff("");
+                feed.setBackOff(AppConfig.DATEFORMAT.format(new Date()));
             }
         });
 

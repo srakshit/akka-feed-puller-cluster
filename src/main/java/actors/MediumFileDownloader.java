@@ -20,7 +20,8 @@ public class MediumFileDownloader extends AbstractActor {
                 .match(Feed.class, feed -> {
                     String customerFeedName = feed.getCompany() + "-" + feed.getFeedName();
                     log.info("Downloading feed {}", customerFeedName);
-                    Thread.sleep(30000);
+                    //Thread.sleep(30000);
+                    FeedDownload.download(feed);
                     getSender().tell(new WorkComplete(new Date()), getSelf());
                 })
                 .build();
